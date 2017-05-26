@@ -1,0 +1,1089 @@
+---
+title: "Machine Learning"
+author: "Carlos Fernandez-Lozano"
+date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+minutes: 300
+layout: page
+subtitle: Curso Formación CHUAC
+#bibliography: ref.bib
+---
+
+**Autor: Carlos Fernandez-Lozano
+
+Este material ha sido preparado utilizando material propio y de otras fuentes:
+
+R-crash-course. Mark Dunning <https://github.com/bioinformatics-core-shared-training/r-crash-course>
+
+A brief introduction to R. Author Natalie Thorne, re-compiled by Mark Dunning
+
+Machine Learning in R for beginners. Karlijn Willems <https://www.datacamp.com/community/tutorials/machine-learning-in-r#gs.VU9dcKs>
+
+código de ejemplo del paquete [pROC](http://web.expasy.org/pROC/):
+
+Xavier Robin, Natacha Turck, Alexandre Hainard, Natalia Tiberti, Frédérique Lisacek, Jean-Charles Sanchez and Markus Müller (2011). [pROC: an open-source package for R and S+ to analyze and compare ROC curves](http://www.biomedcentral.com/1471-2105/12/77/). BMC Bioinformatics, 12, p. 77. DOI: 10.1186/1471-2105-12-77.
+
+Jean-Philippe Vert. Practical session: Introduction to SVM in R [enlace](https://escience.rpi.edu/data/DA/svmbasic_notes.pdf)
+
+```{r setup, include=FALSE}
+rm(list=ls(all=TRUE))
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# Antes de comenzar
+¿Todo el mundo está familiarizado con R? es el momento de decirlo ;) porque vamos a invertir un poco de tiempo en seguir un pequeño curso de iniciación.
+
+A un nivel inicial, podemos utilizar r como una calculadora simple para que realice operaciones simples: +, -, *, /
+```{r}
+2+2
+2-2
+4*3
+10/2
+```
+Si ejecutamos las instrucciones, nos aparecerá en consola la respuesta precedidad por [1]. Nos está indicando que la respuesta tiene 1 único valor y luego nos lo da. En caso de que queramos realizar diferentes operaciones seguidas, sin paréntesis, es importante saber que R sigue el siguiente orden de precedencia, ver <https://en.wikipedia.org/wiki/Order_of_operations#Mnemonics>
+```{r}
+2 + 2 *3
+2 + (2 * 3)
+(2 + 2) * 3
+```
+
+por supuesto que R es capaz de hacer cosas mucho más complicadas, pero estamos aprendiendo no? ;) de momento, vamos a ver si por lo menos podemos usarlo como una calculadora científica con alguna de las operaciones estadísticas más conocidas
+```{r}
+pi
+sin (pi/2)
+cos(pi)
+tan(2)
+log(1)
+```
+
+es lógico pensar que estos cálculos necesitaremos utilizarlos después y que por tanto, debemos guardar los resultados en *variables*
+
+## Variables
+Como ya sabemos, una variable es una letra o palabra a la que podemos llamar para que nos devuelva el valor que almacena. R nos permite usar el operador de asignación `<-` para crear una variable y almacenar un valor en ella.
+
+```{r variables1}
+x <- 10
+x
+myNumber <- 25
+myNumber
+```
+podemos aplicar funciones a dichas variables:
+
+```{r variables2}
+sqrt(myNumber)
+```
+
+podemos sumar el contenido de varias variables:
+```{r variables3}
+x + myNumber
+```
+
+
+podemos cambiar el valor de una variables existente:
+
+```{r variables4}
+x <- 21
+x
+```
+
+podemos fijar el valor de una variable con otra:
+```{r variables5}
+x <- myNumber
+x
+```
+
+Modificar el contenido de una variable:
+
+```{r variables6}
+myNumber <- myNumber + sqrt(16)
+myNumber
+```
+
+si queremos hacer nuestro código un poco legible, es interesante que nombremos las variables siempre de la misma manera y que esta sea lo más informativa posible, a pesar de que podríamos utilizar un único caracter. Quizá lo más usado sea camelCase <https://es.wikipedia.org/wiki/CamelCase>
+
+##Funciones
+Las **funciones** en R realizan operaciones con diferentes **argumentos** (elementos de entrada de la función), algo que ya hemos hecho:
+
+```{r eval=FALSE}
+sin(x)
+```
+
+esta función devuelve el resutlado del seno de **x**.
+
+Los argumentos pueden o no tener nombre, pero en el caso de que no los tengan, tienen que estar obligatoriamente ordenados. El nombre de los argumentos es el que determine la persona que hace la función y se puede consultar en la ayuda de la misma. Obviamente lo mejor es poner siempre nombre, es lo más seguro y lo que más ayuda. Por ejemplo, la función `seq` es una función que genera una secuencia *from* y *to* un conjunto de números. POdemos escribir en la consola `?sq` para que nos muestre la página de ayuda de la función.
+
+```{r functions2}
+seq(from = 2, to = 20, by = 4)
+#esto es equivalente a la instruccion de la linea superior
+seq(2, 20, 4)
+```
+
+una cosa muy a tener en cuenta es que las funciones tienes *valores por defecto*, evidentemente si no tenemos esto en cuenta la función nos va a devolver un valor, que no tiene que corresponder con lo que nosotros esperamos. `rnorm` por ejemplo nos devuelve un conjunto de valores que siguen una *distribucion normal*. Lo único que tenemos que hacer para usar esta función es decirle a R cuántos valores tiene que devolver:
+
+```{r}
+dist.normal<-rnorm(n=1000)
+
+#¿qué es dist.normal?
+str(dist.normal)
+#como sé que es un vector con 1000 elementos, voy a pintar los 5 primeros
+dist.normal[1:5]
+#¿siquen una distribución normal? vamos a ver el histograma con la funcion hist
+hist(dist.normal)
+```
+
+vale muy bien, ¿qué es una distribución normal? pues básicamente tendría que buscar unos puntos que tengan una media de 0 y una desviación típica de 1 pero, ¿por qué esta función lo hace si no se lo he dicho? ya... los parámetros default `?rnorm`
+
+```{r eval=FALSE}
+?rnorm
+
+#como se puede saber desde consola que argumentos se le pueden pasar a una función?
+args(rnorm)
+```
+
+si no queremos que nos devuelva un error, tenemos que ser cuidadosos al escribir los nombres de los *argumentos*. Vamos a fijar una semilla `set.seed()` para que nos devuelva la misma secuencia, recordad que si los argumentos tienen nombres no importa el orden, pero si no se los pasamos, hemos de ser cuidadosos.
+
+```{r}
+set.seed(23)
+rnorm(n=10, sd=3,mean=2)
+set.seed(23)
+rnorm(10, 2, 3)
+```
+
+## Vectores
+- La estructura básica de datos en R es el **vector** que no deja de ser una colección ordenada de valores.
+- Hasta tal punto que R trata a valores individuales como vectores de 1-elemento
+- Podemos hacer combinaciones de *argumentos* con la función `c` en R
+- Como `c`es una función, debemos pasarle los *argumentos* entre paréntesis `(...)`
+```{r}
+x <- c(1,2,3,4,5,6)
+x
+```
+
+también podemos crear una secuencia de valores, en el caso de que queramos que sean consecutivos entre el 1 y el 10 podemos usar el símbolo `:`
+
+```{r}
+x <- 1:6
+x
+```
+
+podemos acceder a valores individuales con los corchetes `[]` y pasando la posición dentro del vector (lo que viene siendo el índice). Podemos entonces extraer valores individuales:
+
+```{r vectors2}
+x[1]
+x[4]
+```
+
+empezamos a hacer cosas con los vectores, que para algo los querrá R, por ejemplo si le aplicamos operaciones a un vector, dichas operaciones se harán para cada elemento de manera *vectorizada*, por ejemplo: 
+
+```{r}
+x <- 1:10
+x
+y <- x*2
+y
+z <- x^2
+z
+x + y
+```
+
+un vector puede contener texto también, y se construye también con la función `c`
+
+```{r}
+x <- c("A","B","C","D")
+x
+y <- c('A', 'B', 'C', 'D')
+y
+#las comillas dobles o simples no importan en este caso, pero es necesario ponerlas?
+#x <- c(A, B, C, D)
+
+tt <- try(x <- c(A, B, C, D),silent = TRUE)
+cat(tt)
+#basicamente, sin ningún tipo de comillas R piensa que estamos intentando pasar objetos con nombre y no los encuentra
+```
+
+podemos generar vectores de valores *lógicos* o *booleanos*:
+
+```{r}
+x <- c(TRUE,TRUE,FALSE)
+```
+
+los valores lógicos nos vienen fenomenal porque nos sirven para crear subconjuntos desde nuestros datos utilizando diferentes operadores de *comparación*; `==`, `<`, `>`, `!=` para evaluar si los valores son iguales, menores, mayores o distintos de uno dado. 
+
+```{r}
+x <- c("A","A", "B","B","C")
+x == "A"
+x != "A"
+x <- rnorm(10)
+x > 0
+```
+
+sin embargo, debemos tener cuidado porque todos los elementos de un vector **deben** obligatoriamente ser del mismo tipo, o R los va a convertir por nosotros pudiendo provocar problemas:
+
+```{r}
+x <- c(1, 2, "three")
+x
+```
+
+## Paquetes en R
+hasta ahora no hemos hecho más ue trabajar con funciones que están disponibles en la distribución *base* de R; las que se instalan por defecto como conjunto mínimo a utilizar cuando instalas R. Por suerte, R es *open-source* y muchos investigadores/desarrolladores crean sus propias funciones en forma de **paquetes** que se almacenan en *repositorios*, siendo dos de los más conocidos CRAN y Bioconductor. CRAN ya tiene miles de paquetes diferentes.
+
+cada vez que arrancamos una sesión de R, es necesario *cargar* el paquete que queramos utilizar previamente, para ello utilizamos `library`
+
+```{r eval=FALSE}
+library(caret)
+```
+
+en caso de que dicho paquete no exista, podemos instalarlo directamente utilizando ìnstall.packages`:
+
+```{r eval=FALSE}
+install.packages('caret')
+```
+
+*Bioconductor* tiene su propio script de instalación y se le llama de la siguiente manera:
+```{r eval=FALSE}
+source("http://www.bioconductor.org/biocLite.R")
+biocLite("affy")
+```
+
+hay paquetes que tienen *dependencias* con otros paquetes o incluso puede que queramos descargar el paquete desde es un espejo del repositorio de CRAN particular, para eso `?install.packages`
+
+# Trabajando con datos
+Vamos a realizar algunas operaciones básicas necesarias para trabajar con datos, para ello vamos a usar datos del proyecto [gapminder](https://www.gapminder.org/data/), que han creado un [paquete de R](https://github.com/jennybc/gapminder). Este conjunto de datos en concreto tiene variables indicativas de diferentes países del mundo (esperanza de vida, población y producto interior bruto).
+
+## Directorio de trabajo
+lo primero es lo primero y en este caso es saber dónde estamos, esto es lo que se conoce como *working directory* en R, vamos a preguntar a R:
+```{r eval=FALSE}
+getwd()
+```
+
+podemos trabajar con la consola y el sistema de ficheros:
+```{R}
+list.files()
+```
+
+vamos a instalar el paquete:
+```{r}
+install.packages('gapminder')
+
+```
+
+una vez instalado, vamos a cargarlo en la sesión y empezamos a trabajar:
+```{r}
+library('gapminder')
+
+gapminder
+
+dim(gapminder)
+ncol(gapminder)
+nrow(gapminder)
+colnames(gapminder)
+
+```
+
+podemos utilizar el visor integrado de RStudio para ver los contenidos del dataframe que importamos. Esto es muy útil para hacer una primera exploración visual e interactiva de los datos, pero no tanto si lo que queremos es hacer scripting con R o análisis (que es lo que normalmente se busca)
+```{r eval=FALSE}
+View(gapminder)
+
+#por consola es muy habitual sacar varias filas y columnas para ver que todo está bien
+gapminder[1:5,1:5]
+
+```
+
+para ver qué tipo de dato nos almacena los valores como vimos antes usamos `str`
+```{r}
+str(gapminder)
+```
+
+vemos que nos da mucho información además de que es un tipo de dato especial llamado *data.frame*. Con este tipo de datos podemos hacer a sus columnas utilizando el nombre:
+```{r}
+gapminder$country
+#esto nos devuelve un vector, podemos asignárselo a otra variable
+countries <- gapminder$country
+```
+
+otra función muy útil es `summary` que nos muestra un resumen bastante útil de los contenidos (por columna). Lo bueno de los `data.frame` es que nos permite tener datos numéricos y tipo carácter almacenados juntos.
+
+```{r}
+summary(gapminder)
+
+#otra función muy interesante es table, en este caso nos agrupa apariciones de la columna y nos dice el número concreto
+table(gapminder$continent)
+```
+
+## Subsetting
+se puede hacer el subsetting de un `data.frame` utilizando corchetes `[]` justo después del nombre del `data.frame`. Un `data.frame` tiene dos dimensiones, por lo que debemos indicarle el índice *fila* y *columna*, o el vector de índices.
+```{r eval=FALSE}
+gapminder[1,2]
+gapminder[2,1]
+gapminder[c(1,2,3),1]
+gapminder[c(1,2,3),c(1,2,3)]
+```
+***Esto no modifica el contenido del `data.frame`, lo único que hace es obtener el subconjunto de valores que le indicamos.
+
+podemos ver todo el contenido de una fila, o de una columna obviando el segundo índice:
+
+```{r eval=FALSE}
+gapminder[1,]
+gapminder[,1]
+```
+
+los índices pueden ser vectores con múltiples valores
+
+```{r eval=FALSE}
+gapminder[1:3,1:2]
+gapminder[seq(1,1704,length.out = 10),1:4]
+```
+
+
+con la función `head` podemos ver las seis primeras filas de todo el ´data.frame´, esto es muy cómodo si el número de columnas no es elevado
+   
+```{r}
+head(gapminder)
+```
+
+en general, es muy útil poder filtrar los datos para quedarte solamente con lo que te interesa. La manera más simple de hacer esto es con *test lógicos*. Por ejemplo, si queremos saber las valores de esperanza de vida mayores de 40 podemos obtener un *vector* con valores `TRUE` y `FALSE` de la siguiente manera:
+```{r eval=FALSE}
+gapminder$lifeExp < 40
+```
+
+esto así, igual no parece muy útil, pero si lo combinamos con lo que ya sabemos, podemos hacer subsetting de los valores que cumplen la condición y quedarnos sólo con esos:
+```{r eval=FALSE}
+dim(gapminder)
+
+dim(gapminder[gapminder$lifeExp < 40,])
+
+```
+
+podemos hacer también subsetting con las columnas:
+```{r echo=FALSE}
+head(gapminder[gapminder$lifeExp < 40, 1:4 ])
+gapminder[gapminder$lifeExp < 40, c("country", "continent","year")]
+```
+
+Podemos comprobar igualdades con el operador lógico `==`. Esto devolverá `TRUE` para entrdas que tengan *exactamente* un contenido idéntico al buscado 
+
+```{r}
+gapminder[gapminder$country == "Zambia",]
+
+```
+
+Para coincidencias parciales se puede usar la función `grep` o *expresiones regulares*
+
+```{r eval=FALSE}
+gapminder[grep("land", gapminder$country),]
+```
+
+si queremos buscar varios valores, tenemos diferentes formas de hacerlo, podemos utilizar un *or* o crear una sentencia con `|`, además de poder usar la función `%in` para verificar los valores que coinciden de un conjunto definido:
+
+```{r eval=FALSE}
+gapminder[gapminder$country == "Zambia" | gapminder$country == "Zimbabwe",]
+gapminder[gapminder$country %in% c("Zambia","Zimbabwe"),]
+```
+
+mediante pruebas lógicas también podemos utilizar un símbolo *and* `&`, en este caso para buscar en Zambia una esperanza de vida menor a 40:
+```{r}
+gapminder[gapminder$country == "Zambia" & gapminder$lifeExp < 40,]
+```
+
+## Ordenar vectores
+podemos utilizar la función `sort` para que nos devuelva un vector ordenado:
+```{r eval=FALSE}
+sort(countries)
+sort(countries,decreasing = TRUE)
+```
+
+sin embargo si lo que queremos es ordenar un `data.frame`, tenemos que hacerlo de otra manera
+```{r}
+leastPop <- gapminder[order(gapminder$pop),]
+head(leastPop)
+```
+
+incluso se puede ordenar usando dos criterios:
+```{r eval=FALSE}
+gapminder[order(gapminder$year, gapminder$country),]
+```
+
+# Plots (resumen muy básico)
+por suerte R es nuestro aliado, y tenemos la posibilidad de hacer plots de manera muy sencilla:
+```{r echo=FALSE}
+
+par(mfrow=c(2,2))
+barplot(VADeaths, beside = TRUE,
+        col = c("lightblue", "mistyrose", "lightcyan",
+                "lavender", "cornsilk"), ylim = c(0, 100))
+boxplot(len ~ dose, data = ToothGrowth,
+        boxwex = 0.25, at = 1:3 - 0.2,
+        subset = supp == "VC", col = "yellow",
+        main = "Guinea Pigs' Tooth Growth",
+        xlab = "Vitamin C dose mg",
+        ylab = "tooth length",
+        xlim = c(0.5, 3.5), ylim = c(0, 35), yaxs = "i")
+boxplot(len ~ dose, data = ToothGrowth, add = TRUE,boxwex = 0.25, at = 1:3 + 0.2,subset = supp == "OJ", col = "orange")
+legend(2, 9, c("Ascorbic acid", "Orange juice"),fill = c("yellow", "orange"))
+set.seed(14)
+x <- rchisq(100, df = 4)
+## if you really insist on using hist() ... :
+hist(x, freq = FALSE, ylim = c(0, 0.2))
+curve(dchisq(x, df = 4), col = 2, lty = 2, lwd = 2, add = TRUE)
+pie(c(Sky = 78, "Sunny side of pyramid" = 17, "Shady side of pyramid" = 5),
+    init.angle = 315, col = c("deepskyblue", "yellow", "yellow3"), border = FALSE)
+```
+
+- La distribución *base* de R trae muchos plots simples
+  + `boxplot`, `hist`, `barplot`,... todos ellos son extensiones de la función `plot`
+- Tiene infinidad de posibles extensiones
+  + colores, textos, puntos superpuestos, legendas, figuras múltiples
+- Referencias para ampliar conocimientos:
+    + [Introductory R course](http://cambiotraining.github.io/r-intro/)
+    + [Quick-R](http://www.statmethods.net/graphs/index.html)
+    + [Diseño de gráficas científicas](http://www.bioinformatics.babraham.ac.uk/training.html#figuredesign)
+
+Podemos generar plots de vectores numéricos:
+
+```{r}
+hist(gapminder$lifeExp)
+```
+
+o también si le pasamos un valor para el eje `x` y otro para el eje `y` obtenemos lo siguiente:
+
+```{r}
+plot(gapminder$pop,gapminder$lifeExp)
+```
+
+
+Si tenemos datos categóricos y queremos que nos muestre un gráfico de barras con los conteos:
+
+```{r}
+barplot(table(gapminder$continent))
+```
+
+
+También podemos visualizar outliers con un boxplot y comparar distribuciones, si al boxplot le pasamos como argumentos dos vectores y el símbolo `~` construimos una fórmula (esto sucede en general en R con este símbolo), realiza el boxplot colocando en el eje `x` la variable categórica y la continua en el eje `y`.
+
+```{r}
+boxplot(gapminder$gdpPercap ~ gapminder$continent)
+```
+
+las posibilidades son infinitas y quedan para vosotros:
+
+```{r}
+plot(gapminder$pop,gapminder$lifeExp,pch=16,
+     col="red",ylab="Life Expectancy",
+     xlab="Population",main="Life Expectancy trend with population")
+```
+
+lo único importante es recordar que el sistema de gráficos que usa R se basa en el *"modelo canvas"*, por lo que podemos ir incorporando cosas encima de un plot que ya existe pero no podemos "deshacer" algo que ya está dibujado.
+
+por ejemplo, si quisiéramoms ver un plot con la esperanza de vida y la población en Europa y Africa, lo primero sería obtener los datos del conjunto total
+```{r}
+euroData <- gapminder[gapminder$continent == "Europe" & gapminder$year == 2002,]
+dim(euroData)
+```
+
+```{r}
+afrData <- gapminder[gapminder$continent == "Africa" & gapminder$year == 2002,]
+dim(afrData)
+```
+
+por ejemplo, ahora podrías plotear la esperanza de vida con respecto a la población de los países europeos como puntos rojos
+
+```{r}
+plot(euroData$pop, euroData$lifeExp,col="red",
+     pch=16,
+     xlab="Population",
+     ylab="Life Expectancy")
+
+```
+
+con la función `points` podemos pintar encima de este plot con puntos azules los correspondientes a países africanos
+```{r eval=FALSE}
+points(afrData$pop, afrData$lifeExp,col="blue",pch=16)
+# por qué da error?
+
+```
+
+vamos a ver ahora si funciona
+```{r eval=FALSE}
+plot(euroData$pop, euroData$lifeExp,col="red",
+     pch=16,
+     xlab="Population",
+     ylab="Life Expectancy")
+points(afrData$pop, afrData$lifeExp,col="blue",pch=16)
+
+```
+
+la verdad que hay muy pocos puntos azules no? ummm cuántos países africanos tenemos?
+```{r}
+nrow(afrData)
+```
+vale, el problema es que hemos puesto (los famosos parámetros default claro) unos límites que se ajustan al primer conjunto de datos, pero eso no tiene que valer para todos necesaria y obviamente ;) por suerte, tenemos los argumentos `xlim` y `ylim` en la función `plot`
+
+```{r}
+plot(euroData$pop, euroData$lifeExp,col="red",
+     pch=16,
+     xlab="Population",
+     ylab="Life Expectancy",
+     xlim=c(0,8e7),ylim=c(30,90))
+points(afrData$pop, afrData$lifeExp,col="blue",pch=16)
+```
+
+hay miles de modificadores para la función `plot`, los más habituales podrían ser `text`, `abline`, `grid`, `legend` (seguro que la ayuda sirve para averiguar qué hacen y cómo lo hacen cada uno...)
+
+sobre gustos no hay nada escrito.... pero sobre colores? por ejemplo en R tenemos un paleta de colores pre-existente:
+```{r}
+library(RColorBrewer)
+display.brewer.all(colorblindFriendly = TRUE)
+
+```
+
+la función `brewer.pal` devuelve los nombres de `n` colores de una de las paletas predefinidas, se lo pasamos en el argumento `col` de la función. Y el boxplot que antes era un poco aburrido ya va cambiando y mejorando ;)
+
+```{r}
+boxplot(gapminder$gdpPercap ~ gapminder$continent,col=brewer.pal(5,"Set1"),
+        main="GDP per-continent",
+        xlab="Continent",
+        ylab="GDP")
+```
+
+# Instrucciones básicas de programación
+Además de como una calculadora simple, científica, herramienta para realizar gráficas y filtrar datos, aún nos quedan una infinidad de posibles funciones que sacar a la luz de R. Una de ellas es que podemos hacer programación como en cualquier lenguaje de alto nivel. 
+
+## Bucle for
+el bucle `for` en R tiene la siguiente pinta
+```{r}
+for(i in 1:10){
+  print(paste("valor de i es",i))
+}
+```
+
+## Sentencia if/else
+si tenemos una condición que puede ser `TRUE` O `FALSE` podemos utilizar una instrucción if/else sencilla por ejemplo
+```{r}
+valor.medio <- 0.9
+if(valor.medio>0.5){
+  print("más alto")
+}else{
+  print("más bajo")
+}
+```
+
+incluso podemos hacerlo anidar instrucciones, la potencia es exactamente igual que en cualquier lenguaje de alto nivel
+```{r}
+valor.medio <- 0.9
+for(i in 1:10){
+  if(valor.medio>0.5){
+    print(paste("En la iteración ",i," el valor fue más alto"))
+  }else{
+    print(paste("En la iteración ",i," el valor fue más bajo"))
+  }
+}
+```
+
+## Función apply
+hemos visto antes que R está pensado para trabajar con vectores, es lógico que incluya alguna manera limpia de calcular una función a cada fila o a cada columna (ya que tenemos vectores seguro que aparecerán matrices, arrays, listas o dataframes por ahí). R tiene la función `apply` y varios alias específicos `sapply`, `lapply`, `tapply`, 'sapply', 'vapply' y otras
+
+```{r}
+#vamos a generar una matriz de 4x4
+matriz.4x4 <- matrix(rnorm(16),4,4)
+
+#vamos a sumar los valores de cada columna
+output.suma <- apply(matriz.4x4,2,sum)
+
+```
+
+básicamente con apply podemos seleccionar filas (valor 1), columnas (2) y la función que queremos calcular, en este caso `sum` pero podría ser una definida por el usuario.
+
+# Tipos de problemas
+Los dos tipos de problemas principales que se pueden resolver utilizando Machine Learning son problemas de clasificación y de regression, aunque obviamente existen más: clustering, procesado de señales...
+
+## Clasificación
+```{r}
+data(iris)
+head(iris)
+str(iris)
+
+# cuántas `Species` hay de cada
+table(iris$Species) 
+
+# division en % de `Species`
+round(prop.table(table(iris$Species)) * 100, digits = 1)
+
+# cargamos la libreria `ggvis` que hace gráficos muy majos
+library(ggvis)
+
+# Iris scatter plot - ojo que solo pintamos los sepalos
+iris %>% ggvis(~Sepal.Length, ~Sepal.Width, fill = ~Species) %>% layer_points()
+
+#ahora los pétalos
+iris %>% ggvis(~Petal.Length, ~Petal.Width, fill = ~Species) %>% layer_points()
+
+# correlation entre `Petal.Length` y `Petal.Width`
+cor(iris$Petal.Length, iris$Petal.Width)
+
+x=levels(iris$Species)
+
+# Imprimir matriz de correlación para Setosa
+print(x[1])
+cor(iris[iris$Species==x[1],1:4])
+
+# Imprimir matriz de correlación para Versicolor
+print(x[2])
+cor(iris[iris$Species==x[2],1:4])
+
+# Imprimir matriz de correlación para Virginica
+print(x[3])
+cor(iris[iris$Species==x[3],1:4])
+
+```
+
+así que tenemos una correlación global del 0.96 en general, de un 0.79 para versicolor y de un 0.31 para setosa y 0.32 para virginica.
+
+vamos a construir ahora un modelo simple de clasificación, en este caso vamos a usar un `KNN` del paquete `class`. kNN (K - nearest neighbor) es un algoritmo bastante simple que se puede usar tanto para clasificación como para regresión. Da unos resultados bastante buenos en general, no asume ningún tipo de condición que cumplen los datos, aunque en general tiene un alto coste computacional. Básicamente, en clasificación, tenemos una serie de ejemplos con su etiqueta de pertenencia a una clase, cuando nos pasan un nuevo ejemplo, hemos de compararlo con cada uno de los casos conocidos, entonces podemos buscar los casos que sean más similares y formar un *vecindario* y verificamos sus etiquetas. Concretamente los `k` más similares. Se comprueban las etiquetas de los vecinos y el que resulte mayoritario, es el que se le asigna al nuevo ejemplo.
+```{r}
+# Vamos a construir un modelo simple, en este caso un knn
+# debemos darle al modelo los datos y las clases, así como unos datos de entrenamiento y otros de validación
+iris.data <- iris[,c(1:4)]
+iris.trainLabels <- iris[,5]
+
+library(class)
+iris_pred <- knn(train = iris.data, test = iris.data, cl = iris.trainLabels, k=3)
+
+# Inspect `iris_pred`
+iris_pred
+```
+
+ya... menuda solución que nos da no? no estamos esperando un porcentaje de acierto y ya? ;)
+
+```{r}
+# vamos a crear un data.frame
+irisTestLabels <- data.frame(iris.trainLabels)
+
+# haemos el merge de `iris_pred` y de `iris.testLabels` 
+merge <- data.frame(iris_pred, iris.trainLabels)
+
+# vamos a ponerle nombre a las columnas de la variable `merge`
+names(merge) <- c("Predicted Species", "Observed Species")
+
+# vemos que pinta tiene `merge` 
+merge
+```
+
+siempre es muy bueno quedarse con los vectores que obtiene el modelo y con los vectores de valores esperados, porque podemos calcular nosotros todas las medidas que queremos (todas??? ya veremos que aún así, no)
+```{r}
+#vamos a obtener una matriz de confusión para las tres clases, esto vale?
+output.iris.table <- table(iris_pred,iris.trainLabels)
+
+library(caret)
+
+confusionMatrix(output.iris.table)
+
+output.confMatrix<-confusionMatrix(iris_pred,iris.trainLabels)
+
+F1_multi<-function(M) {
+  k = dim(M)[1]
+  fk = rep(0, k)
+  n_total = sum(M)
+  for (i in 1:k) {
+    M2 = matrix(0, 2, 2)
+    M2[1,1] = M[i,i]
+    M2[1,2] = sum(M[i,]) - M[i,i]
+    M2[2,1] = sum(M[,i]) - M[i,i]
+    M2[2,2] = n_total - M2[1,1] - M2[1,2] - M[2,1]
+    
+    f1 = F1_binary(M2)
+    fk[i] = f1
+  }
+  return(fk)
+}
+
+F1_binary<-function(M) {
+  p = precision_binary(M)
+  r = recall_binary(M)
+  if (p==0&&r==0) {
+    f = 0
+  }else {
+    f = 2 * p * r / (p+r)
+  }
+  
+  return(f)
+}
+
+precision_binary<-function(M) {
+  if (sum(M[,1])!=0) {
+    p = M[1,1] / sum(M[,1])  
+  }else {
+    p = 0
+  }
+  
+  return(p)
+}
+
+recall_binary<-function(M) {
+  if (sum(M[1,])!=0) {
+    r = M[1,1] / sum(M[1,])  
+  }else {
+    r = 0
+  }
+  
+  return(r)
+}
+
+F1_multi(output.iris.table)
+```
+
+
+
+## Regresión
+```{r}
+#cargamos los datos, estan en library(datasets)
+data(airquality)
+
+#vemos la pinta de la estructura
+str(airquality)
+
+#vemos las primeras seis filas del conjunto de datos
+head(airquality)
+
+#miramos estadísticamente que pinta tienen
+summary(airquality)
+
+#siempre es recomendable (esto es relativo, porque con un elevado número de variables no se verá nada haciéndolo así) pintar y ver qué pinta tienen nuestros datos
+library(graphics)
+pairs(airquality, panel = panel.smooth, main = "airquality data")
+
+#vamos a calcular un modelo lineal simple
+library(stats)
+fit <- lm(Ozone ~ Wind + Solar.R + Temp, data = airquality)
+summary(fit)
+
+# ahora que sabemos que tenemos NA values, vamos a quitarlos (hay otras opciones)
+df <- na.omit(as.data.frame(airquality))
+
+# Ploteamos Ozone versus Temp con el ajuste de una regresión lineal
+library(ggplot2)
+qplot(Temp, Ozone, data=df, geom=c("point", "smooth"), method="lm")
+
+# vamos a jugar con las fechas 
+df$Date <- as.Date(paste("1973", df$Month, df$Day, sep="-"), "%Y-%m-%d")
+
+# Seleccionamos ahora Temp, Ozone y date
+library(dplyr)
+df <- select(df, Temp, Ozone, Date) 
+
+# cambiamos de formato con Reshape
+library(reshape2)
+df <- melt(df, id="Date")
+
+# Ploteamos la serie temporal de Temp and Ozone con curvas de regression loess
+ggplot(df, aes(x=Date, y=value, colour=variable, group=variable)) +
+geom_point(aes(y=value, colour=variable)) + geom_smooth(method="loess")
+
+```
+
+pero claro, R tiene orientación a objetos, tenemos listas que almacenan valores, estamos haciendo llamadas a funciones (con parámetros por defecto, lo que no debe de ser muy bueno), nos devuelven objetos y nos creemos lo que dan. En algún momento tendremos que empezar a valorar si lo que hacemos tiene sentido no?
+
+```{r}
+#vamos a empezar a repasar cosas, por ejemplo, tamaño del dataset
+dim(airquality)
+
+#antes hicimos esta llamada fit <- lm(Ozone ~ Wind + Solar.R + Temp, data = airquality), vamos a ver cuántos valores ajustados devuelve
+length(fit$fitted.values)
+
+#y los que faltan???? vamos a ver que pasa si eliminamos los NAs
+dim(na.omit(airquality))
+
+#es decir, que lm elimina las filas que contengan algún NA, ojo porque esto a veces no es lo que queremos!!
+#vamos a construir nuestros dos vectores de salida igual que en clasificación
+merge.reg <- data.frame(fit$fitted.values, fit$residuals)
+
+r2.adj.funct<- function(obs,pred,num.pred){
+  #obs==y, pred=predicted, num.pred=number of idependent variables (predictors)
+  
+  x.in<- cor(obs,pred)^2
+  x.in<- (1-x.in)*((length(obs)-1)/(length(obs)-num.pred-1))
+  x.in<- 1 - x.in 
+  return(x.in)
+}
+
+rmse.funct<- function(obs,pred){ 
+  #obs==y, pred=predicted
+  return(sqrt(mean((pred - obs)^2)))
+}
+
+r2.funct<- function(obs,pred){  
+  #obs==y, pred=predicted
+  x.in<- cor(obs,pred)^2
+  return(x.in)
+}
+
+r2.funct(na.omit(airquality)$Ozone,fit$fitted.values)
+rmse.funct(na.omit(airquality)$Ozone,fit$fitted.values)
+r2.adj.funct(na.omit(airquality)$Ozone,fit$fitted.values,5)
+
+```
+
+
+# Medidas de rendimiento
+Existen muchas medidas diferentes de rendimiento para problemas de clasificación y lo mismo para regresión. Muchos modelos de los que se usan en R devuelven el valor de acierto medido como `accuracy` y, por eso, es importante saber extraer el vector de resultados y calcular a mano el resto de medidas que nos interesan.
+
+En general las medidas sencillas no son buenas para medir el rendimiento de un algoritmo. Por cierto, lo que hemos hecho hasta ahora es, pensando en el diseño del experimento utilizando técnicas de Machine Learning, como mínimo, una mala práctica en su totalidad. No nos interesa todavía pegarnos con el diseño del experimento y con todo lo que debemos hacer bien para asegurar que nuestros resultados son adecuados ;) eso para más adelante.
+
+## Clasificación binaria
+Medidas de rendimiento en modelos de clasificación binaria más utilizadas son *accuracy*, *precision*, *recall*, *F1 Score* y *AUC*. Siendo *TP* los verdaderos positivos, *TN* los verdaderos negativos, *FP* los falsos positivos y *FN* los falsos negativos de la matriz de confusión, podemos calcular los siguientes valores.
+
+$accuracy = \frac{TP+TN}{P+N}$
+
+$precision = \frac{TP}{TP+FP}$
+
+$recall = \frac{TP}{TP+FN}$
+
+$sensibilidad = \frac{TP}{TP+FP}$
+
+$especificidad = \frac{TN}{FP+TN}$
+
+$F_1=2\times\frac{precision \times recall}{precision+recall}$
+
+es por esto que no se deben usar medias simples como *accuracy* porque si los datos no están equilibrados (mismo número de casos de una clase que de otra), podemos obtener un acierto del 99% y que nuestro resultado sea horrible (veremos esto más adelante, cuando hablemos de validación cruzada).
+
+la curva ROC es una representación gráfica de la sensibilidad frente a la especificidad para un sistema clasificador binario según vamos variando un valor umbral de discriminación. Uno de las mayores ventajas de la curva ROC es que es independiente de la distribución entre las clases en el conjunto de datos, por lo tanto, en el caso mencionado antes el valor del área bajo la curva ROC, conocido como *AUROC* sería muy inferior, probablemente en torno al 0.50 y quedaría sobre la conocida como recta de discriminación.
+
+una curva ROC por tanto, puede ser pensada como la representación de la sensibilidad, frente a la (1-especificidad). Si reflejamos los valores en dos ejes de coordenadas ´x´ e `y`, la esquina superior izquierda (0,1) sería el mejor valor posible, con un 100% de sensibilidad (no tendríamos por tanto ningún FN) y un 100% de especificidad (no tendríamos por tanto ningún FP). Si nuestro resultado fuese completamente aleatorio como dijimos antes, caería sobre la línea discriminatoria, que es la línea que va del punto (0,0) al (1,1).
+
+```{r}
+library(ROCR)
+data("ROCR.simple")
+
+head(cbind(ROCR.simple$predictions,ROCR.simple$labels),5)
+
+predictions <- prediction(ROCR.simple$predictions,ROCR.simple$labels)
+
+curva.roc <- performance(predictions,measure='tpr', x.measure = 'fpr')
+plot(curva.roc)
+abline(a=0,b=1)
+
+#podemos calcular el valor puntual de AUROC
+curva.roc <- performance(predictions,measure='auc')
+curva.roc@y.values
+
+```
+
+lo bueno de R es que hay muchos paquetes que hacen lo mismo, y siempre alguno tiene la delicadeza de hacer las cosas más bonitas por nosotros ;) por ejemplo pROC, vamos a ver diferentes opciones del paquete usando el código que está disponible en el siguiente [enlace](http://web.expasy.org/pROC/screenshots.html).
+
+```{r}
+library(pROC)
+
+data(aSAH)
+
+
+
+rocobj <- plot.roc(aSAH$outcome, aSAH$s100b, percent = TRUE, main="Smoothing")
+
+lines(smooth(rocobj), # smoothing (default: binormal)
+
+      col = "#1c61b6")
+
+lines(smooth(rocobj, method = "density"), # density smoothing
+
+      col = "#008600")
+
+lines(smooth(rocobj, method = "fitdistr", # fit a distribution
+
+             density = "lognormal"), # let the distribution be log-normal
+
+      col = "#840000")
+
+legend("bottomright", legend = c("Empirical", "Binormal", "Density", "Fitdistr\n(Log-normal)"), col = c("black", "#1c61b6", "#008600", "#840000"),lwd = 2)
+
+```
+
+```{r}
+library(pROC)
+
+data(aSAH)
+
+
+
+plot.roc(aSAH$outcome, aSAH$s100b,
+
+         main="Confidence interval of a threshold", percent=TRUE,
+
+         ci=TRUE, of="thresholds", # compute AUC (of threshold)
+
+         thresholds="best", # select the (best) threshold
+
+         print.thres="best") # also highlight this threshold on the plot
+```
+
+```{r}
+library(pROC)
+
+data(aSAH)
+
+
+
+rocobj <- plot.roc(aSAH$outcome, aSAH$s100b,
+
+                main="Confidence intervals", percent=TRUE,
+
+                ci=TRUE, # compute AUC (of AUC by default)
+
+                print.auc=TRUE) # print the AUC (will contain the CI)
+
+ciobj <- ci.se(rocobj, # CI of sensitivity
+
+               specificities=seq(0, 100, 5)) # over a select set of specificities
+
+plot(ciobj, type="shape", col="#1c61b6AA") # plot as a blue shape
+
+plot(ci(rocobj, of="thresholds", thresholds="best")) # add one threshold
+```
+
+
+para más información sobre la curva ROC, recomiendo echar un ojo al artículo de Fawcett <http://web.archive.org/web/http://home.comcast.net/~tom.fawcett/public_html/papers/ROC101.pdf>
+
+## Regresión
+En cuanto a problemas de regresión, las medidas más utilizadas son *RMSE*, *MSE*, *R-squared*...
+
+$MSE = \frac{\sum_{t=1}^N{E}_{t}^2}{N}$
+
+$RMSE = \sqrt{\frac{\sum_{t=1}^N{E}_{t}^2}{N}}$
+
+$R^2= \frac{\sigma_{XY}^2}{\sigma_{X}^2 \sigma_{Y}^2}$
+
+se puede utilizar Pearson, Spearman... en general lo mejor en regresión es ver gráficamente el comportamiento que ha tenido el modelo con los residuos. Trabajaremos sobre esto en los siguientes días del curso porque es importante, un valor de $R^2$ de 1 no tiene por qué ser un 
+
+# Algoritmos estado del arte
+Existen muchos algoritmos que pueden ser considerados pertenecientes al estado del arte por sus buenos resultados obtenidos en muchos problemas, tanto de clasificación binaria, multiclass o regresión. Además de `KNN`, vamos a meternos de lleno en una gran batalla entre los defensores de los `SVM` (Support Vector Machines) y los defensores de `RF`. Personalmente el *no free lunch theorem* creo que tiene toda la razón, no hay un mejor algoritmo para cualquier problema, ni unos mejores parámetros. Lo que sí que hay es una buena manera de hacer las cosas (diseño experimental) y unos algoritmos que, de manera general, pueden resultar buenos y que todos usamos. Por eso ahora veremos un poco por alto con ejemplos el funcionamiento de estos dos:
+
+## Support Vector Machines
+
+Vamos a aprovechar el código de Jean Philippe Vert para ilustrar gráficamente lo que es un `SVM`.
+
+```{r}
+
+n <- 150 # number of data points
+p <- 2   # dimension
+sigma <- 1  # variance of the distribution
+meanpos <- 0 # centre of the distribution of positive examples
+meanneg <- 3 # centre of the distribution of negative examples
+npos <- round(n/2) # number of positive examples
+nneg <- n-npos # number of negative examples
+# Generate the positive and negative examples
+xpos <- matrix(rnorm(npos*p,mean=meanpos,sd=sigma),npos,p)
+xneg <- matrix(rnorm(nneg*p,mean=meanneg,sd=sigma),npos,p)
+x <- rbind(xpos,xneg)
+# Generate the labels
+y <- matrix(c(rep(1,npos),rep(-1,nneg)))
+# Visualize the data
+plot(x,col=ifelse(y>0,1,2))
+legend("topleft",c('Positive','Negative'),col=seq(2),pch=1,text.col=seq(2))
+
+## Prepare a training and a test set ##
+ntrain <- round(n*0.8) # number of training examples
+tindex <- sample(n,ntrain) # indices of training samples
+xtrain <- x[tindex,]
+xtest <- x[-tindex,]
+ytrain <- y[tindex]
+
+ytest <- y[-tindex]
+istrain=rep(0,n)
+istrain[tindex]=1
+# Visualize
+plot(x,col=ifelse(y>0,1,2),pch=ifelse(istrain==1,1,2))
+legend("topleft",c('Positive Train','Positive Test','Negative Train','Negative Test'),
+col=c(1,1,2,2),pch=c(1,2,1,2),text.col=c(1,1,2,2))
+
+
+# load the kernlab package
+library(kernlab)
+# train the SVM
+svp <- ksvm(xtrain,ytrain,type="C-svc",kernel='vanilladot',C=100,scaled=c())
+# General summary
+svp
+# Attributes that you can access
+attributes(svp)
+# For example, the support vectors
+alpha(svp)
+alphaindex(svp)
+b(svp)
+# Use the built-in function to pretty-plot the classifier
+plot(svp,data=xtrain)
+
+
+# load the kernlab package
+library(kernlab)
+# train the SVM
+svp <- ksvm(xtrain,ytrain,type="C-svc",kernel='rbf',kpar=list(sigma=1),C=100,scaled=c())
+# General summary
+svp
+# Attributes that you can access
+attributes(svp)
+# For example, the support vectors
+alpha(svp)
+alphaindex(svp)
+b(svp)
+# Use the built-in function to pretty-plot the classifier
+plot(svp,data=xtrain)
+ ?kernels
+
+```
+
+
+
+```{r}
+library(e1071)
+
+x <- iris.data
+y <- irisTestLabels
+
+svm_model <- svm(Species ~ ., data=iris)
+summary(svm_model)
+
+pred <- predict(svm_model,x)
+table(pred,t(y))
+
+```
+
+para problemas de regresión
+```{r}
+x <- c(1:18)
+y <- c(3,4,8,4,6,9,8,12,15,26,35,40,45,54,49,59,60,62,63,68)
+data <- cbind(x,y)
+data <- as.data.frame(data)
+model <- lm(y ~ x, data)
+plot(data) 
+# Add the fitted line
+abline(model)
+predictedY <- predict(model, data)
+points(data$x, predictedY, col = "blue", pch=4)
+rmse <- function(error)
+{
+  sqrt(mean(error^2))
+}
+
+error <- model$residuals  # same as data$Y - predictedY
+predictionRMSE <- rmse(error)
+predictionRMSE
+```
+
+```{r}
+model <- svm(y ~ x , data)
+ 
+predictedY <- predict(model, data)
+plot(data)
+points(data$x, predictedY, col = "red", pch=4)
+
+error <- data$y - predictedY
+
+svrPredictionRMSE <- rmse(error)
+svrPredictionRMSE
+```
+
+
