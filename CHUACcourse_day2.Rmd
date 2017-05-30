@@ -1,0 +1,239 @@
+---
+title: "Machine Learning"
+author: "Carlos Fernandez-Lozano"
+date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+minutes: 300
+layout: page
+subtitle: Curso Formación CHUAC
+#bibliography: ref.bib
+---
+
+**Autor: Carlos Fernandez-Lozano
+
+Este material ha sido preparado utilizando material propio y de otras fuentes:
+
+Ejemplos de Random Forest utilizando el dataset Iris [enlace](http://rischanlab.github.io/RandomForest.html)
+
+```{r setup, include=FALSE}
+rm(list=ls(all=TRUE))
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+# Algoritmos estado del arte
+Vamos a continuar viendo algoritmos estado del arte y en este caso, vamos a fijarnos en *Random Forest*. Realmente es una técnica muy buena que en general, es utilizada en muchos campos de investigación distintos. Mucha de esta fama es debida a que tiene un número bajo de hiperparámetros que tunear, es muy rápida, dependiendo del número de variables es muy interpretable y además nos permite evaluar la importancia de cada uno de las variables que está utilizando.
+
+## Random Forest
+
+Hablando en términos muy generales, el algoritmo *Random Forest* es una estructura jerárquica con nodos y ejes dirigidos. Los ejes pueden ser de tres tipos: raíz, nodo interno y nodo hoja. Se considera un meta-clasificador en el que se aplican técnicas *ensemble*. Este tipo de técnicas, hablando en términos simples, utilizan muchas técnicas juntas para obtener mejores resultados de los que se obtendrían utilizando sólo una de ellas como también sucede con las técnicas de *boosting* y *bagging*. RF está formado por un determinado número de árboles, en este caso *decision trees* o árboles de decisión. A la hora de obtener una predicción, cada uno de los árboles da su voto para determinar la clase asociada a un vector de entrada (en clasificación).
+
+Para el entrenamiento de un RF se utiliza *bagging* para generar los datos de entrenamiento, es decir, se remuestra el conjunto total de datos que se le pasan aleatoriamente con reemplazo, lo cual implica que sólo un porcentaje del conjunto de datos inicial formarán parte del conjunto de entrenamiento (normalmente el reparto es 2/3-1/3). Los datos que no se pasan al modelo (1/3) se utilizarán después para validarlo, es lo que se denomina *out of bag data* y nos dará un nuevo valor de error particular de esta técnica conocida como *out of bag error*. Hemos de procurar mantener lo más bajo posible este error, ya que es un indicar de problemas: *overfitting*, problemas de generalización del modelo... Esta particularidad del algoritmo hace que a priori, sea menos sensible a variaciones en los datos de entrada como los que se producen por outliers o ruido en los datos.
+
+Otro concepto importante que aparece al utilizar *Random Forest* es la matriz de proximidad. Esta matriz se construye con la medida de proximidad que resulta de comprobar si las observaciones similares caen en los mismos nodos terminales con más o menos frecuencia que los diferentes. Recordad que este curso está orientado a la aplicación de este tipo de técnicas para resolver problemas, no a demostrar formalmente el funcionamiento de las mismas, pero se puede cambiar ;)
+
+Pero basta de rollo, si queréis más información matemática os recomiendo echar un ojo al artículo de Breiman en el siguiente [enlace](https://www.stat.berkeley.edu/~breiman/randomforest2001.pdf).
+
+```{r}
+rm(list=ls(all=TRUE))
+data("iris")
+
+library(randomForest)
+
+iris.rf <- randomForest(Species~.,data = iris, proximity= TRUE)
+
+print(iris.rf)
+plot(iris.rf)
+layout(matrix(c(1,2),nrow=1),
+       width=c(4,1)) 
+par(mar=c(5,4,4,0))
+plot(iris.rf, log="y")
+par(mar=c(5,0,4,2))
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("top", colnames(iris.rf$err.rate),col=1:4,cex=0.8,fill=1:4)
+
+importance(iris.rf)
+varImpPlot(iris.rf)
+#PCA con la matriz de proximidad del RF
+MDSplot(iris.rf,iris$Species)
+
+```
+
+# Diferentes aproximaciones para la selección de características
+
+Los problemas de mundo real son, en general, multifactoriales y de una elevada dimensionalidad. Cuántas más variables se midan, mayor es la probabilidad de que se incorporen al dataset ruido y correlaciones entre variables que disminuyan la efectividad de los algoritmos de Machine Learning (así como de las técnicas estadísticas convencionales), empeorando por tanto el resultado obtenido. Es por esto que se intenta reducir lo máximo posible la dimensionalidad del problema buscando siempre un resultado mejor, o al menos igual que el obtenido utilizando todas las variables. En el momento que se obtenga un valor inferior, debe parar el proceso de selección de características. Existen también otras técnicas como la extracción de características para tratar de reducir la dimensionalidad del problema como la PCA que visteis antes en el curso.
+
+Existen básicamente tres tipos de aproximaciones distintas para la selección de características utilizando Machine Learning: son las conocidas como aproximaciones filter, wrapper y embedded. Recomiendo la lectura del artículo [A review of feature selection techniques in bioinformatics](https://academic.oup.com/bioinformatics/article/23/19/2507/185254/A-review-of-feature-selection-techniques-in) los siguientes apartados servirán para explicar las aproximaciones principales mencionadas en el artículo anterior.
+
+## Aproximaciones *filter*
+Este tipo de técnicas evalúan la importancia de las técnicas observando simplemente las propiedades intrínsecas de los datos. Dicha importancia se calcula normamente utilizando algún tipo de *score* entre cada una de las variables y la clase de salida. Después, al algoritmo se le pasa únicamente ese subconjunto ordenado de variables para entrenar. 
+
+- Ventajas: velocidad de ejecución ya que son muy simples computacionalmente hablando y rápidas. El cálculo del score se hace solamente una vez y después es entrenan los diferentes modelos. 
+
+- Inconvenientes: no tienen en cuenta el modelo utilizado para entrenar, el proceso de búsqueda es independiente del proceso de entrenamiento. En general la mayoría de técnicas utilizadas para calcular el *score* sólo tienen en cuenta cada una de las variables de manera individual , ignorando posibles relaciones entre features (lo que es muy habitual). Una vez detectado este inconveniente, existen diferentes test que tienen en cuenta precisamente esto y que también se podrían utilizar.
+
+## Aproximaciones *wrapper*
+Este tipo de aproximaciones realizan de manera conjunta la búsqueda del mejor subconjunto de variables y del mejor modelo de machine learning. Básicamente se van generando subsets de variables que se prueban con diferentes valores de los hiperparámetros de la técnica de machine learning que estemos utilizando. Es necesario utilizar un algoritmo de búsqueda (puede ser más o menos complejo) y normalmente las técnicas heurísticas o metaheurísticas basadas en la naturaleza son algunas de las más utilizadas.
+
+- Ventajas: la principal es que existe una interacción entre el subset de variables y el modelo que estemos utilizando. También se pueden tener en cuenta las interacciones entre variables.
+
+- Desventajas: se eleva mucho el riesgo de *overfitting* y pérdida de generalización del modelo. Además, son computacionalmente muy intensos, lo que hace que los dataset de una alta dimensionalidad sean complicados de estudiar con estas técnicas.
+
+## Aproximaciones *embedded*
+Este tipo de aproximaciones buscan el mejor subconjunto de variables con la propia construcción del clasificador. Se podría entender como una búsqueda en el espacio combinada de los subsets de variables y la hipótesis.
+
+- Ventajas: incluyen una interacción directa con el modelo de Machine Learning y al mismo tiempo son aproximaciones mucho menos costosas computacionalmente hablando que las *wrapper*.
+
+- Desventajas: extremadamente dependientes del modelo.
+
+# Preprocesado de los datos
+Se considera probado que aproximadamente un 80% del esfuerzo total requerido para realizar un análisis de datos recae directamente en preparlos para ello. Es, por lo tanto, un proceso crucial que va a determinar claramente el éxito de las técnicas que se utilicen. Es decir, si los datos no están bien, no los hemos pre-procesado adecuadamente o no hemos sido capaces de eliminar los *outliers* que están en los mismos, da exactamente igual la técnica que utilicemos o los hiperparámetros de la misma, que no vamos a obtener unos buenos resultados. Podemos decir entonces que el rendimiento, en términos de efectividad, de los algoritmos está directamente relacionado con los datos que se utilicen para entrenarlos. Lectura recomendada [Big Data: Preprocesamiento y calidad de datos](http://sci2s.ugr.es/sites/default/files/ficherosPublicaciones/2133_Nv237-Digital-sramirez.pdf)
+
+## Limpiar datos
+Una de las primeras tareas que hay que realizar cuando nos llega el dataset es abrir el fichero y ver qué hay. El ojo se entrena con este tipo de acciones y poco a poco es capaz de detectar problemas comunes: NA's, valores iguales en todos los ejemplos del dataset...
+
+El problema de limpiar los datos es que no significa borrar ni mucho menos, y cada acción que realicemos puede significar una acierto o un nuevo problema. En general, al realizar análisis de datos, las afirmaciones categóricas son muy malas, hay que analizar cada problema particular e intentar dar una solución específica. Ejemplo
+
+- Siempre que encuentre un *NA* en mis datos, elimino ese paciente...
+
+Si lo vemos como frase categórica está bien, quiero decir que puede ser nuestra forma de trabajar y no pensemos nada más. Ahora bien, si tengo 25 pacientes y elimino 5 porque tienen un *NA* en la variable edad, estaría actuando bien? porque puede que tengamos la fecha de nacimiento del paciente en su historia y lo podamos calcular.
+
+En general, la prudencia y el análisis de cada caso particular es la clave para que las conclusiones de nuestro análisis sean acertadas. Ahora mismo es muy sencillo descargar código que funciona con una búsqueda simple en Google y pensar que eso es hacer un análisis de los datos, todo lo contrario. En R por ejemplo, podemos llamar a la función `na.omit()` y nos quita los valores *NA* de los datos, ya si eso luego miramos a ver lo que hace...
+
+- NAs: tenemos diferentes formas de actuar con este tipo de *dato* que tendremos que valorar cada vez que arranquemos un nuevo análisis. Podemos eliminar la fila/columna que lo contenga. Podemos sustituir el valor del NA por la media de la columna para que no afecte mucho al algoritmo, o podemos hacer algún tipo de clustering con todos los ejemplos de nuestro dataset y buscar el valor medio del cluster al que pertenezca el ejemplo. ¿Cómo se toman estas decisiones? lo primero es sabiendo qué es lo que estamos analizando. En el caso, por ejemplo que esté trabajando con datos genéticos, si veo que una columna tiene muchos NA puedo suponer que hubo un problema con la sonda de la máquina y que lo mejor es cargarme todos esos valores, sin remordimientos ;)
+
+- Eliminar variables: en general tenemos muchos datos y muchas variables, lo que no quiere decir que lo que tengamos esté bien. Existe mucha redundancia (principalmente debido a que muchas variables están correlacionadas de una u otra manera) y ruido. ¿Esto qué quiere decir? básicamente que podemos eliminar variables y no vamos a perder información significativa, por eso es tan importante. Se pueden eliminar variables entonces de acuerdo a su valor de correlación con otras variables o aquellas que tienen una varianza 0 o muy cercana a 0 (que información hay ahí??). Obviamente lo más recomendable siempre es no eliminar nada, porque si los datos están bien recogidos y esos valores son reales, algo se podrá hacer con ellos no? Recomendaciones para leer los siguientes artículos: 
+
+- Zorn, C. (2005). A solution to separation in binary response models. Political Analysis, 13(2), 157-170.
+
+- Gelman, A., Jakulin, A., Pittau, M.G. and Su, Y.S. (2008). A weakly informative default prior distribution for logistic and other regression models. The Annals of Applied Statistics, 1360-1383.
+
+Vamos a ver un ejemplo de Thiago G. Martins en su [web](https://tgmstat.wordpress.com/2014/03/06/near-zero-variance-predictors/)
+
+```{r}
+require(caret)
+data(GermanCredit)
+ 
+require(MASS)
+r = lda(formula = Class ~ ., data = GermanCredit)
+
+colnames(GermanCredit)[26 + 1]
+
+table(GermanCredit[, 26 + 1])
+
+colnames(GermanCredit)[44 + 1]
+
+table(GermanCredit[, 44 + 1])
+
+x = nearZeroVar(GermanCredit, saveMetrics = TRUE)
+ 
+str(x, vec.len=2)
+
+x[x[,"zeroVar"] > 0, ]
+
+x[x[,"zeroVar"] + x[,"nzv"] > 0, ] 
+```
+
+## Normalización de los datos
+Por desgracia para nosotros no hemos traducido bien el termino normalizar y para nosotros, cualquier transformación que hagamos sobre los datos para intentar mejorar la interpretación de la información contenida en ellos lo llamamos *normalización*. En realidad existen varias aproximaciones distintas para transformar nuestros datos y algunas de las cuales veremos a continuación, la idea principal es que este proceso de transformación se realiza para evitar que los atributos con valores más altos tengan más importancia para el algoritmo de machine learning que otros.
+
+### Normalización
+Los datos se transforman generalmente a un intervalo específico, puede ser entre máximo y mínimo de cada variable, entre cero y uno o entre uno y menos uno
+
+### Estandarización
+Los datos se transforman para que cada variable tenga media de cero y desviación típica de uno, solamente si la distribución es normal.
+
+### Variables *dummy*
+Son variables creadas a propósito desde los datos originales para recoger información de carácter cualitativo y poder medir la relevancia de dicho factor. Suele utilizar por ejemplo para modelizar sexo (hombre o mujer), fumador(no, casual, social, diario, si).
+
+
+```{r}
+#fileName <- 'wine_data.csv'
+#download.file(paste0('https://raw.githubusercontent.com/rasbt/pattern_classification/master/data/', fileName), fileName, method="curl")
+wine.data <- read.csv(file='/Users/cfernandez/Documents/GitHub/CHUACcourse/data/wine_data.csv')
+
+#http://sebastianraschka.com/Articles/2014_about_feature_scaling.html
+
+wine.data.work <- wine.data[,1:3]
+colnames(wine.data.work)<-c('clase','Alcohol','AcidoMalico')
+
+ScalingDS <- function(ds,s=1,c=2) {
+  #===========================
+  # Scaling dataset (Step 4)
+  #===========================
+  # s = { 1,2,3 } - type of scaling: 1 = normalization, 2 = standardization, 3 = other
+  # c = the number of column into the dataset to start scaling
+  # - if c = 1: included the dependent variable
+  # - if c = 2: only the features will be scaled
+  # Default scaling = NORMALIZATION !
+  
+  # DEFAULT scaled dataset = original
+  # if other s diffent of 1,2,3 is used => no scaling!
+  DataSet.scaled <- ds
+  
+  # if NORMALIZATION
+  if (s==1) {
+    # Scale all the features (from column c; column 1 is the predictor output)
+    if(c==2){
+      maxs <- apply(ds[c:ncol(ds)], 2, max)
+      mins <- apply(ds[c:ncol(ds)], 2, min)
+      ds.norm.scale<-scale(ds[c:ncol(ds)], center = mins, scale = maxs - mins)
+      DataSet.scaled<-cbind(ds[,1],ds.norm.scale)
+      colnames(DataSet.scaled)[1]<-'clase'
+      }else{
+      maxs <- apply(ds, 2, max)
+      mins <- apply(ds, 2, min)
+      DataSet.scaled<-scale(ds, center = mins, scale = maxs - mins)
+      colnames(DataSet.scaled)[1]<-'clase'
+
+    }
+    
+  }
+  # if STADARDIZATION
+  if (s==2) {
+    # Scale all the features (from column c; column 1 is the predictor output)
+    if(c==2){
+      DataSet.scaled <- scale(ds[c:ncol(ds)],center=TRUE,scale=TRUE)
+      DataSet.scaled<-cbind(ds[,1],DataSet.scaled)
+      colnames(DataSet.scaled)[1]<-'clase'
+    }else{
+      DataSet.scaled<-scale(ds,center=TRUE,scale=TRUE)
+      colnames(DataSet.scaled)[1]<-'clase'
+
+    }
+  }
+  
+  # if other scaling
+  if (s==3) {
+    # Scale all the features (from feature 2 bacause feature 1 is the predictor output)
+    # TO ADD THE CODE ! 
+  }
+  
+  return (as.data.frame(DataSet.scaled)) # return the scaled data frame
+}
+
+
+
+wine.data.work.scaled <- ScalingDS(wine.data.work,2,2)
+wine.data.work.norm   <- ScalingDS(wine.data.work)
+
+plot(wine.data.work$Alcohol,wine.data.work$AcidoMalico,col='red',xlim = c(-5,20),ylim=c(-2,6),pch=16,xlab = 'Alcohol', ylab='Acido Malico')
+points(wine.data.work.scaled$Alcohol,wine.data.work.scaled$AcidoMalico,col='blue',pch=16)
+points(wine.data.work.norm$Alcohol,wine.data.work.norm$AcidoMalico,col='green',pch=16)
+legend(14,0.5,c('Raw','Standarization','Normalization'),pch=16,col=c('red','blue','green'))
+
+library(ggplot2)
+datos<-as.data.frame(rbind(wine.data.work,wine.data.work.scaled,wine.data.work.norm))
+datos$normalizacion <- c(rep('Raw',177),rep('Standarizado',177),rep('Normalizado',177))
+p <- ggplot(datos,aes(Alcohol, AcidoMalico))
+p + geom_point(alpha=1/3,aes(colour=factor(normalizacion), shape=factor(clase)))
+```
+

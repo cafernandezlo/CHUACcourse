@@ -679,7 +679,7 @@ siempre es muy bueno quedarse con los vectores que obtiene el modelo y con los v
 ```{r}
 #vamos a obtener una matriz de confusión para las tres clases, esto vale?
 output.iris.table <- table(iris_pred,iris.trainLabels)
-
+output.iris.table
 library(caret)
 
 confusionMatrix(output.iris.table)
