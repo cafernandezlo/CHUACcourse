@@ -80,6 +80,33 @@ Este tipo de técnicas evalúan la importancia de las técnicas observando simpleme
 
 - Inconvenientes: no tienen en cuenta el modelo utilizado para entrenar, el proceso de búsqueda es independiente del proceso de entrenamiento. En general la mayoría de técnicas utilizadas para calcular el *score* sólo tienen en cuenta cada una de las variables de manera individual , ignorando posibles relaciones entre features (lo que es muy habitual). Una vez detectado este inconveniente, existen diferentes test que tienen en cuenta precisamente esto y que también se podrían utilizar.
 
+```{r}
+library(mlbench)
+data("BreastCancer")
+BreastCancer <- na.omit(BreastCancer)
+
+x<-data.matrix(BreastCancer[,2:10])
+x = x[,apply(x,2,var)!=0]
+x<-scale(x)
+
+y<-as.factor(BreastCancer[,11])
+
+tt.pvalue <- function(x){
+  t.test(x~y)$p.value
+}
+
+tt.mat<-apply(x,2,tt.pvalue)
+
+tt.mat.sorted <- sort (tt.mat,decreasing = TRUE)
+
+numeroFeatures <- 2
+
+inds.fs <- names(tt.mat.sorted[1:numeroFeatures])
+
+x <- x[,inds.fs]
+```
+
+
 ## Aproximaciones *wrapper*
 Este tipo de aproximaciones realizan de manera conjunta la búsqueda del mejor subconjunto de variables y del mejor modelo de machine learning. Básicamente se van generando subsets de variables que se prueban con diferentes valores de los hiperparámetros de la técnica de machine learning que estemos utilizando. Es necesario utilizar un algoritmo de búsqueda (puede ser más o menos complejo) y normalmente las técnicas heurísticas o metaheurísticas basadas en la naturaleza son algunas de las más utilizadas.
 
@@ -154,13 +181,11 @@ Los datos se transforman para que cada variable tenga media de cero y desviación
 ### Variables *dummy*
 Son variables creadas a propósito desde los datos originales para recoger información de carácter cualitativo y poder medir la relevancia de dicho factor. Suele utilizar por ejemplo para modelizar sexo (hombre o mujer), fumador(no, casual, social, diario, si).
 
+Vamos a jugar un poco con la normalización y estandarización de variables con un ejemplo basado en [este](http://sebastianraschka.com/Articles/2014_about_feature_scaling.html).
+
 
 ```{r}
-#fileName <- 'wine_data.csv'
-#download.file(paste0('https://raw.githubusercontent.com/rasbt/pattern_classification/master/data/', fileName), fileName, method="curl")
 wine.data <- read.csv(file='/Users/cfernandez/Documents/GitHub/CHUACcourse/data/wine_data.csv')
-
-#http://sebastianraschka.com/Articles/2014_about_feature_scaling.html
 
 wine.data.work <- wine.data[,1:3]
 colnames(wine.data.work)<-c('clase','Alcohol','AcidoMalico')
@@ -225,15 +250,163 @@ ScalingDS <- function(ds,s=1,c=2) {
 wine.data.work.scaled <- ScalingDS(wine.data.work,2,2)
 wine.data.work.norm   <- ScalingDS(wine.data.work)
 
+#plot muy sencillo
 plot(wine.data.work$Alcohol,wine.data.work$AcidoMalico,col='red',xlim = c(-5,20),ylim=c(-2,6),pch=16,xlab = 'Alcohol', ylab='Acido Malico')
 points(wine.data.work.scaled$Alcohol,wine.data.work.scaled$AcidoMalico,col='blue',pch=16)
 points(wine.data.work.norm$Alcohol,wine.data.work.norm$AcidoMalico,col='green',pch=16)
 legend(14,0.5,c('Raw','Standarization','Normalization'),pch=16,col=c('red','blue','green'))
 
+#con ggplot2 podemos obtener uno mucho más bonito con poco esfuerzo
 library(ggplot2)
 datos<-as.data.frame(rbind(wine.data.work,wine.data.work.scaled,wine.data.work.norm))
 datos$normalizacion <- c(rep('Raw',177),rep('Standarizado',177),rep('Normalizado',177))
 p <- ggplot(datos,aes(Alcohol, AcidoMalico))
-p + geom_point(alpha=1/3,aes(colour=factor(normalizacion), shape=factor(clase)))
+p + geom_point(alpha=1/3,aes(colour=factor(normalizacion), shape=factor(clase))) + scale_shape_discrete(name='Clase') + scale_colour_discrete(name='Tipo de normalización')
 ```
 
+# Tuning de parámetros y ML
+Obviamente es muy necesario encontrar los hiperparámetros adecuados para cada técnica de Machine Learning y es necesario conocer cuáles son. Quizá no es tan necesario conocer la matématica que se esconde detrás de cada uno de ellos es cierto que cuánto más se conozca, mejor resultados (o más rápidamente) encontraremos buenos resultados.
+
+La mayoría de librerías de técnicas de ML o algunas específicas se encargan de hacer esta búsqueda por nosotros. Tampoco es que sea un proceso muy complicado, porque básicamente consiste en hacer una *búsqueda grid* que implica la generación de muchos modelos para cada combinación posible de parámetros que le pasemos al algoritmo.
+
+Recordando nuestro ejemplo de *SVM* para regresión basado en este [Tutotial](https://www.svm-tutorial.com/2014/10/support-vector-regression-r/) vamos a buscar los valores que mejoran los resultados:
+
+## SVM
+El primer día de curso habíamos hecho lo siguiente:
+```{r}
+library(e1071)
+x <- c(1:20)
+y <- c(3,4,8,4,6,9,8,12,15,26,35,40,45,54,49,59,60,62,63,68)
+data <- cbind(x,y)
+data <- as.data.frame(data)
+
+rmse <- function(error)
+{
+  sqrt(mean(error^2))
+}
+
+model <- svm(y ~ x , data)
+ 
+predictedY <- predict(model, data)
+plot(data)
+points(data$x, predictedY, col = "red", pch=4)
+
+error <- data$y - predictedY
+
+svrPredictionRMSE <- rmse(error)
+svrPredictionRMSE
+```
+Obtenemos un error RMSE de `3.157061`. Estamos evaluando un modelo de regresión basado en SVM llamado *epsilon-regression*. Esto ya nos suena que en algún momento deberíamos haber dado un valor a *epsilon*, pero como no lo hemos hecho, si revisamos vemos que el valor por defecto es 0.1. Siendo aplicados, también podríamos haber mirado que a un SVM le tenemos que dar un parámetro *cost* que es el que nos ayuda a controlar el sobre-entrenamiento. Vamos a hacer tuning ahora de ambos parámetros:
+
+```{R}
+
+tuneResult <- tune(svm, y ~ x,  data = data,
+              ranges = list(epsilon = 10^(-1:-4), cost = 2^(-9:9))
+)
+print(tuneResult)
+
+predictedY.tuned <- predict(tuneResult$best.model, data)
+
+error <- data$y - predictedY.tuned
+
+svrPredictionRMSE <- rmse(error)
+svrPredictionRMSE
+plot(tuneResult)
+```
+
+Debemos fijarnos en las zonas más oscuras del plot, e ir refinando sucesivamente:
+
+```{r}
+tuneResult <- tune(svm, y ~ x,  data = data,
+                   ranges = list(epsilon = seq(0,0.2,0.01), cost = 2^(2:9))
+) 
+ 
+print(tuneResult)
+predictedY.tuned <- predict(tuneResult$best.model, data)
+
+error <- data$y - predictedY.tuned
+
+svrPredictionRMSE <- rmse(error)
+svrPredictionRMSE
+plot(tuneResult)
+
+plot(data, pch=16)
+tunedModel <- tuneResult$best.model
+tunedModelY <- predict(tunedModel, data) 
+  
+points(data$x, predictedY, col = "red", pch=4)
+lines(data$x, predictedY, col = "red", pch=4)
+  
+points(data$x, tunedModelY, col = "blue", pch=4)
+lines(data$x, tunedModelY, col = "blue", pch=4)
+```
+
+## RF
+Vamos a recordar al igual que con SVM lo que habíamos hecho antes:
+
+```{r}
+rm(list=ls(all=TRUE))
+data("iris")
+
+library(randomForest)
+
+iris.rf <- randomForest(Species~.,data = iris, proximity= TRUE)
+
+print(iris.rf)
+plot(iris.rf)
+layout(matrix(c(1,2),nrow=1),
+       width=c(4,1)) 
+par(mar=c(5,4,4,0))
+plot(iris.rf, log="y")
+par(mar=c(5,0,4,2))
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("top", colnames(iris.rf$err.rate),col=1:4,cex=0.8,fill=1:4)
+
+importance(iris.rf)
+varImpPlot(iris.rf)
+#PCA con la matriz de proximidad del RF
+MDSplot(iris.rf,iris$Species)
+
+irisPred<-predict(iris.rf,iris)
+table(irisPred, iris$Species)
+```
+
+o sea que lo hacemos perfecto... igual ya podemos ir incorporando un poco más de información y aprovechar a entender que entrenar un modelo de ML con los mismos datos con los que lo vamos a validar no es muy buena idea. En el próximo día veremos diferentes maneras de asegurar que nuestros resultados son los más adecuados. De momento, siguiendo el ejemplo del [enlace](http://rischanlab.github.io/RandomForest.html) vamos a hacer las cosas un poco mejor, que igual tampoco es perfecto todavía ;)
+
+vamos a usar un 50% de los datos para entrenar y un 50% para validar.
+
+```{r}
+ind <- sample(2,nrow(iris),replace=TRUE,prob=c(0.5,0.5))
+trainData <- iris[ind==1,]
+testData <- iris[ind==2,]
+library(randomForest)
+
+iris_rf <- randomForest(Species~.,data=trainData,ntree=100,proximity=TRUE)
+table(predict(iris_rf),trainData$Species)
+
+print(iris_rf)
+
+plot(iris_rf)
+layout(matrix(c(1,2),nrow=1),
+       width=c(4,1)) 
+par(mar=c(5,4,4,0))
+plot(iris_rf)
+par(mar=c(5,0,4,2))
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("top", colnames(iris_rf$err.rate),col=1:4,cex=0.8,fill=1:4)
+```
+
+vamos a entrenar un RF sobre el conjunto de test
+```{r}
+irisPred<-predict(iris_rf,newdata=testData)
+table(irisPred, testData$Species)
+plot(margin(iris_rf,testData$Species))
+```
+
+vamos a intentar hacer el tuning de RF:
+```{r}
+tune.rf <- tuneRF(iris[,-5],iris[,5], stepFactor=0.5)
+print(tune.rf)
+```
+
+Existen muchas formas de hacer el tuning de cualquier técnica de ML. Podríamos perfectamente hacerlo a mano, usando los propios paquetes que implementan las técnicas como en los ejemplos que acabamos de hacer o incluso con paquetes que actúan como *wrappers* de estos, tipo `Caret`. En cualquier caso, debemos intentar automatizar lo máximo posible este proceso.
