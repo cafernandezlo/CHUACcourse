@@ -19,6 +19,18 @@ subtitle: Curso Formación CHUAC
 
 Este material ha sido preparado utilizando material propio y de otras fuentes:
 
+R-crash-course. Mark Dunning <https://github.com/bioinformatics-core-shared-training/r-crash-course>
+
+A brief introduction to R. Author Natalie Thorne, re-compiled by Mark Dunning
+
+Machine Learning in R for beginners. Karlijn Willems <https://www.datacamp.com/community/tutorials/machine-learning-in-r#gs.VU9dcKs>
+
+código de ejemplo del paquete [pROC](http://web.expasy.org/pROC/):
+
+Xavier Robin, Natacha Turck, Alexandre Hainard, Natalia Tiberti, Frédérique Lisacek, Jean-Charles Sanchez and Markus Müller (2011). [pROC: an open-source package for R and S+ to analyze and compare ROC curves](http://www.biomedcentral.com/1471-2105/12/77/). BMC Bioinformatics, 12, p. 77. DOI: 10.1186/1471-2105-12-77.
+
+Jean-Philippe Vert. Practical session: Introduction to SVM in R [enlace](https://escience.rpi.edu/data/DA/svmbasic_notes.pdf)
+
 Ejemplos de Random Forest utilizando el dataset Iris [enlace](http://rischanlab.github.io/RandomForest.html)
 
 ```{r setup, include=FALSE}

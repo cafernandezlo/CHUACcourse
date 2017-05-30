@@ -31,6 +31,8 @@ Xavier Robin, Natacha Turck, Alexandre Hainard, Natalia Tiberti, Frédérique Lisa
 
 Jean-Philippe Vert. Practical session: Introduction to SVM in R [enlace](https://escience.rpi.edu/data/DA/svmbasic_notes.pdf)
 
+Ejemplos de Random Forest utilizando el dataset Iris [enlace](http://rischanlab.github.io/RandomForest.html)
+
 ```{r setup, include=FALSE}
 rm(list=ls(all=TRUE))
 
