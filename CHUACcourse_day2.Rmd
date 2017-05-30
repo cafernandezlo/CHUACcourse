@@ -10,9 +10,8 @@ output:
     toc: yes
     toc_float: yes
 minutes: 300
+subtitle: Curso Formacion CHUAC
 layout: page
-subtitle: Curso Formación CHUAC
-#bibliography: ref.bib
 ---
 
 **Autor: Carlos Fernandez-Lozano
@@ -162,7 +161,7 @@ require(caret)
 data(GermanCredit)
  
 require(MASS)
-r = lda(formula = Class ~ ., data = GermanCredit)
+#r = lda(formula = Class ~ ., data = GermanCredit)
 
 colnames(GermanCredit)[26 + 1]
 
@@ -409,6 +408,7 @@ legend("top", colnames(iris_rf$err.rate),col=1:4,cex=0.8,fill=1:4)
 ```
 
 vamos a entrenar un RF sobre el conjunto de test
+
 ```{r}
 irisPred<-predict(iris_rf,newdata=testData)
 table(irisPred, testData$Species)
@@ -416,6 +416,7 @@ plot(margin(iris_rf,testData$Species))
 ```
 
 vamos a intentar hacer el tuning de RF:
+
 ```{r}
 tune.rf <- tuneRF(iris[,-5],iris[,5], stepFactor=0.5)
 print(tune.rf)
