@@ -1,0 +1,299 @@
+---
+title: "Machine Learning"
+author: "Carlos Fernandez-Lozano"
+date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+minutes: 300
+subtitle: Curso Formacion CHUAC
+layout: page
+---
+
+**Autor: Carlos Fernandez-Lozano
+
+Este material ha sido preparado utilizando material propio y de otras fuentes:
+
+R-crash-course. Mark Dunning <https://github.com/bioinformatics-core-shared-training/r-crash-course>
+
+A brief introduction to R. Author Natalie Thorne, re-compiled by Mark Dunning
+
+Machine Learning in R for beginners. Karlijn Willems <https://www.datacamp.com/community/tutorials/machine-learning-in-r#gs.VU9dcKs>
+
+código de ejemplo del paquete [pROC](http://web.expasy.org/pROC/):
+
+Xavier Robin, Natacha Turck, Alexandre Hainard, Natalia Tiberti, Frédérique Lisacek, Jean-Charles Sanchez and Markus Müller (2011). [pROC: an open-source package for R and S+ to analyze and compare ROC curves](http://www.biomedcentral.com/1471-2105/12/77/). BMC Bioinformatics, 12, p. 77. DOI: 10.1186/1471-2105-12-77.
+
+Jean-Philippe Vert. Practical session: Introduction to SVM in R [enlace](https://escience.rpi.edu/data/DA/svmbasic_notes.pdf)
+
+Ejemplos de Random Forest utilizando el dataset Iris [enlace](http://rischanlab.github.io/RandomForest.html)
+
+```{r setup, include=FALSE}
+rm(list=ls(all=TRUE))
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+LLegamos al tercer día preparados para valorar diferentes opciones de diseño experimental. Ya hemos comentado que utilizar todos los datos para entrenar un modelo de ML no es una buena idea. La siguiente aproximación que seguimos fue dividir nuestros datos en dos conjuntos, entrenamiento y test, que mejora nuestro diseño experimental pero aún así es un poco *justito*. Es más, ya hemos hecho algún entrenamiento y *tuning* de hiperparámetros donde hemos visto que las técnicas por nosotros, buscan los mejores valores de dichos hiperparámetros utilizando técnicas de validación cruzada, en los ejemplos era un 10-fold cross-validation.
+
+Estas técnicas de validación cruzada se utilizan principalmente para medir el rendimiento de los algoritmos de ML y para evitar sobre-entrenamiento. A la hora de utilizar las técnicas de ML es nuestro objetivo principal, extraer todo el conocimiento/información que está en los datos y conseguir que el modelo pueda generalizarlo de tal manera que ante nuevos casos desconocidos, el rendimiento que obtengamos sea bueno.
+
+Además, utilizar este tipo de técnicas de validación cruzada nos va a permitir comparar en igualdad de condiciones el rendimiento de diferentes experimentos. Se deben realizar además diferentes repeticiones para comprobar la estabilidad del modelo y estudiar la desviación de sus resultados en diferentes ejecuciones. Mucha desviación puede identificar problemas de sobre entrenamiento o *bias* en los datos.
+
+Existen diferentes aproximaciones, pero las más usadas son *10-fold cross-validation* y *Leave one out*. *LOO* es recomendable usarla cuando tenemos pocos casos de estudio o los conjuntos no están bien balanceados (en problemas de clasificación). En general los conjuntos de datos en medicina no están balanceados y existen diferentes aproximaciones para solucionarlo. Algunas incluyen reducir la clase mayoritaria y otras aumentar con casos sintéticos la minoritaria, pero escapa un poco del alcance del curso. Queda la información aquí para que busquéis como resolverlo.
+
+Hoy toca trabajar estos conceptos sobre pizarra y leyendo este [artículo](https://peerj.com/articles/2721) ;)
+
+
+# Ejercicios
+
+os toca trabajar un poco:
+
+1. Entrena un `SVM` y un `RF` con parámetros `default` utilizando el dataset llamado `Ionosphere`. Es un dataset de clasificación binaria con 351 instancias y 35 variables.
+
+```{r}
+library(mlbench)
+library(e1071)
+data("Ionosphere")
+
+ionos.matrix <- data.matrix(Ionosphere)
+nuevo.dataset<-ionos.matrix[,apply(ionos.matrix,2,var)!=0]
+
+x <- nuevo.dataset[,1:33]
+y <- as.factor(nuevo.dataset[,34])
+
+svm.model <- svm(x,y)
+summary(svm.model)
+
+pred.svm <- predict(svm.model,x)
+table.svm<-table(pred.svm,t(y))
+
+library(randomForest)
+rf.model <- randomForest(x,y)
+summary(rf.model)
+
+pred.rf <- predict (rf.model,x)
+table.rf<-table(pred.rf,t(y))
+
+F1_binary<-function(M) {
+  p = precision_binary(M)
+  r = recall_binary(M)
+  if (p==0&&r==0) {
+    f = 0
+  }else {
+    f = 2 * p * r / (p+r)
+  }
+  
+  return(f)
+}
+
+precision_binary<-function(M) {
+  if (sum(M[,1])!=0) {
+    p = M[1,1] / sum(M[,1])  
+  }else {
+    p = 0
+  }
+  
+  return(p)
+}
+
+recall_binary<-function(M) {
+  if (sum(M[1,])!=0) {
+    r = M[1,1] / sum(M[1,])  
+  }else {
+    r = 0
+  }
+  
+  return(r)
+}
+F1_binary(table.rf)
+F1_binary(table.svm)
+
+
+
+```
+
+2. Ahora entrena un `SVM` y un `RF` pero divide los datos 75% para entrenamiento y valida los modelos con el 25% restante de los datos.
+
+```{r}
+library(mlbench)
+library(e1071)
+data("Ionosphere")
+
+ionos.matrix <- data.matrix(Ionosphere)
+nuevo.dataset<-ionos.matrix[,apply(ionos.matrix,2,var)!=0]
+set.seed(1234)
+ind <- sample(2,nrow(nuevo.dataset),replace=TRUE,prob=c(0.75,0.25))
+trainData <- nuevo.dataset[ind==1,]
+testData <- nuevo.dataset[ind==2,]
+
+x.train <- trainData[,1:33]
+x.train.output <- as.factor(trainData[,34])
+x.test <- testData[,1:33]
+x.test.output <- as.factor(testData[,34])
+
+
+
+svm.model <- svm(x.train,x.train.output)
+summary(svm.model)
+
+pred.svm <- predict(svm.model,x.test)
+table.svm<-table(pred.svm,t(x.test.output))
+
+library(randomForest)
+rf.model <- randomForest(x.train,x.train.output)
+summary(rf.model)
+
+pred.rf <- predict (rf.model,x.test)
+table.rf<-table(pred.rf,t(x.test.output))
+
+F1_binary<-function(M) {
+  p = precision_binary(M)
+  r = recall_binary(M)
+  if (p==0&&r==0) {
+    f = 0
+  }else {
+    f = 2 * p * r / (p+r)
+  }
+  
+  return(f)
+}
+
+precision_binary<-function(M) {
+  if (sum(M[,1])!=0) {
+    p = M[1,1] / sum(M[,1])  
+  }else {
+    p = 0
+  }
+  
+  return(p)
+}
+
+recall_binary<-function(M) {
+  if (sum(M[1,])!=0) {
+    r = M[1,1] / sum(M[1,])  
+  }else {
+    r = 0
+  }
+  
+  return(r)
+}
+F1_binary(table.rf)
+F1_binary(table.svm)
+
+
+
+```
+
+3. Entrenad ahora un `SVM` y un `RF` y hacer el tuning de los hiperparámetros, apuntad también los valores de F y así vemos la mejora.
+
+```{r}
+library(mlbench)
+library(e1071)
+data("Ionosphere")
+
+ionos.matrix <- data.matrix(Ionosphere)
+nuevo.dataset<-ionos.matrix[,apply(ionos.matrix,2,var)!=0]
+
+
+ind <- sample(2,nrow(nuevo.dataset),replace=TRUE,prob=c(0.75,0.25))
+trainData <- nuevo.dataset[ind==1,]
+testData <- nuevo.dataset[ind==2,]
+
+x.train <- trainData[,1:33]
+x.train.output <- as.factor(trainData[,34])
+x.test <- testData[,1:33]
+x.test.output <- as.factor(testData[,34])
+
+tuneResult <- tune(svm, x.train,x.train.output,
+                   ranges = list(cost = c(1:15),epsilon = c(0.1,0.01,0.001,0.0001))
+)
+print(tuneResult)
+
+pred.svm <- predict(tuneResult$best.model, x.test)
+table.svm<-table(pred.svm,t(x.test.output))
+F1_binary(table.svm)
+
+tuneResult.rf <- tuneRF(x.train,x.train.output, stepFactor=0.5,
+                        doBest = TRUE,ntreeTry = 500,mtryStart = 2) 
+  
+print(tuneResult.rf)
+
+rf.model <- randomForest(x.train,x.train.output,mtry = tuneResult.rf$mtry,
+                         ntree=tuneResult.rf$ntree)
+
+pred.rf <- predict(rf.model, x.test)
+table.rf<-table(pred.rf,t(x.test.output))
+F1_binary(table.rf)
+
+```
+
+4. Ahora viene lo bueno, haced un 10-fold cross-validation externo y entrenad los modelos de `SVM` y `RF` buscando los mejores parámetros para cada uno de los 10 folds (la técnica los seleccionará internamente con otro 10-fold cross-validation del que no tenemos que preocuparnos).
+
+```{r}
+# pistas!!
+# necesitamos un bucle (vale un for por ejemplo). Os recomendaría usar la librería cvTools
+# seré bueno, voy a poneros el esqueleto
+
+# bucle {
+#   train.inputData    <- ....
+#   train.outputVector <- ....
+#   test.inputData     <- ....
+#   test.outputVector  <- ....
+#   
+#   tunearModelo(...)
+#   
+#   predecirModeloDatosTest <- ....
+#   
+#   almacenoVectores.test.outputVector.y.pred.vector <- ...
+#   }
+# 
+# calcular.F.measure.Vectores(...)
+
+```
+
+5. Comparamos los resultados de los cuatro puntos anteriores con test estadísticos.
+
+```{r}
+#vuestra solución aquí
+
+```
+
+6. Repite los modelos de los puntos 1-4 pero ahora estandariza los datos. ¿Cambia el rendimiento de los algoritmos?
+
+```{r}
+# Vuestra solución aquí
+
+```
+
+# Rregrs
+Un buen paquete para comenzar a resolver problemas en regresión (aunque es fácilmente modificable para otros tipos de problemas como clasificación) es [Rregrs](https://github.com/enanomapper/RRegrs), publicado en el siguiente [artículo](https://jcheminf.springeropen.com/articles/10.1186/s13321-015-0094-2).
+
+Seguiremos los enlaces y realizaremos algún ejemplo sencillo:
+```{r}
+# install.packages(c("caret", "corrplot", "data.table"))
+# install.packages("testthat")
+# install.packages("devtools")
+# library(devtools)
+# install_github("enanomapper/RRegrs", subdir="RRegrs")
+# packageVersion('caret')
+# remove.packages(c('caret'))
+# 
+# # revisad info de instalación del paquete si estáis en windows
+# install_version(package='caret',version='6.0-52')
+
+library(RRegrs)
+dir.create('DataResults')
+download.file('https://raw.githubusercontent.com/enanomapper/RRegrs/master/TEST/ds/ds.House.csv','DataResults/ds.House.csv',method='auto',quiet=FALSE)
+
+RRegrsResults <- RRegrs()
+```
+
+
+# Ejemplos de SparkR
+Creo que una buena guía que podéis seguir para lanzar vuestras pruebas de ML con Spark lo tenéis en este [enlace](https://spark.apache.org/docs/2.1.0/sparkr.html#machine-learning).
