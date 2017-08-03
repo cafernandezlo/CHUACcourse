@@ -17,7 +17,7 @@ subtitle: Curso Formación CHUAC
 
 **Autor: Carlos Fernandez-Lozano
 
-Este material ha sido preparado utilizando material propio y de otras fuentes:
+Este material ha sido preparado utilizando material propio y de otras fuentes, podéis consultar los siguientes enlaces para completar conocimientos:
 
 R-crash-course. Mark Dunning <https://github.com/bioinformatics-core-shared-training/r-crash-course>
 
